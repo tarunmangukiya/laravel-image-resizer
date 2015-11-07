@@ -1,0 +1,16 @@
+{
+    "name": "tarunmangukiya/image-resizer",
+    "description": "Laravel 5 Package for Image uploading, auto-resizing and retriving library.",
+    "type": "stand-alone",
+    "require": {
+        "intervention/image": "^2.3"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Tarun Mangukiya",
+            "email": "tarunmangukiya@hotmail.com"
+        }
+    ],
+    "minimum-stability": "dev"
+}
