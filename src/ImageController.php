@@ -50,6 +50,7 @@ class ImageController extends Controller {
 
       // finally we save the image as a new file
       $img->save($output_file);
+      $img->destroy();
 
       return \Redirect::to($output_file);
     }

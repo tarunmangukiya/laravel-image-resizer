@@ -84,6 +84,7 @@ class ImageResizer
             $target = "$compiled/$key/$slug-$rand-$s[0]x$s[1].$ext";
             // finally we save the image as a new file
             $img->save($target);
+            $img->destroy();
         }
 
         return $filename;
@@ -105,12 +106,12 @@ class ImageResizer
         if(file_exists($new_path)){
             return \URL::to($new_path);
         }
+        else if(!file_exists("$original/$filename") && isset($config['types'][$type]['default'])){
+            return \URL::to($config['types'][$type]['default']);
+        }
         else if($config['dynamic_generate']){
             $url = "resource-generate-image?filename=".urlencode($filename)."&type=".urlencode($type)."&size=".urlencode($size);
             return \URL::to($url);
-        }
-        else if(isset($config['types'][$type]['default'])){
-            return \URL::to($config['types'][$type]['default']);
         }
         return \URL::to($new_path);
     }
