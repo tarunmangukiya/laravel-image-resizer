@@ -33,7 +33,7 @@ class ImageResizerServiceProvider extends ServiceProvider
             __DIR__.'/config/config.php',
             'imageresizer'
         );
-        
+
         /*
          * Register the service provider for the dependency.
          */
@@ -50,5 +50,7 @@ class ImageResizerServiceProvider extends ServiceProvider
         });
 
         $this->app->alias('ImageResizer', 'TarunMangukiya\ImageResizer\ImageManager');
+
+        include __DIR__.'/routes.php';
     }
 }

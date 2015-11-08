@@ -15,6 +15,8 @@ return array(
     |
     */
 
+    'dynamic_generate' => true,
+
     'types' => [
         'profile' => [
             'original' => storage_path() . '/profile',
