@@ -102,9 +102,17 @@ class ImageResizer
         $pathinfo = pathinfo($path);
         $new_path = $pathinfo["dirname"] . "/" . $pathinfo["filename"] . "-$s[0]x$s[1]." . $pathinfo["extension"];
 
-        if(!file_exists($new_path) && isset($config['types'][$type]['default']))
-            return $config['types'][$type]['default'];
-        return $new_path;
+        if(file_exists($new_path)){
+            return \URL::to($new_path);
+        }
+        else if($config['dynamic_generate']){
+            $url = "resource-generate-image?filename=".urlencode($filename)."&type=".urlencode($type)."&size=".urlencode($size);
+            return \URL::to($url);
+        }
+        else if(isset($config['types'][$type]['default'])){
+            return \URL::to($config['types'][$type]['default']);
+        }
+        return \URL::to($new_path);
     }
 
     public function makeDirs()
