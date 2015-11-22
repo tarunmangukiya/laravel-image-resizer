@@ -92,16 +92,42 @@ class ImageResizer
 
     public function get($type, $size, $filename)
     {
-        // Get Configurations
         $config = $this->config;
-        $original = $config['types'][$type]['original'];
-        $compiled = $config['types'][$type]['compiled'];
-        $s = $config['types'][$type]['sizes'][$size];
+        if(empty($filename)){
+            if(isset($config['types'][$type]['default'])){
+                return \URL::to($config['types'][$type]['default']);
+            }else{
+                return '';
+            }
+        }
 
-        $path = "$compiled/$size/$filename";
+        // Check if user wants the original Image
 
-        $pathinfo = pathinfo($path);
-        $new_path = $pathinfo["dirname"] . "/" . $pathinfo["filename"] . "-$s[0]x$s[1]." . $pathinfo["extension"];
+        if($size == 'original')
+        {
+            // Get the original Image if it's in public folder
+            $original = $config['types'][$type]['original'];
+
+            $compiled = str_replace(public_path().'/', '', $original);
+
+            //$compiled = $config['types'][$type]['compiled'];
+            //$s = $config['types'][$type]['sizes'][$size];
+
+            $new_path = "$compiled/$filename";
+        }
+        else
+        {
+            // Get Configurations for specific size
+            $original = $config['types'][$type]['original'];
+            $compiled = $config['types'][$type]['compiled'];
+            $s = $config['types'][$type]['sizes'][$size];
+
+            $path = "$compiled/$size/$filename";
+
+            $pathinfo = pathinfo($path);
+            $new_path = $pathinfo["dirname"] . "/" . $pathinfo["filename"] . "-$s[0]x$s[1]." . $pathinfo["extension"];
+        }
+
 
         if(file_exists($new_path)){
             return \URL::to($new_path);
@@ -109,7 +135,7 @@ class ImageResizer
         else if(!file_exists("$original/$filename") && isset($config['types'][$type]['default'])){
             return \URL::to($config['types'][$type]['default']);
         }
-        else if($config['dynamic_generate']){
+        else if($config['dynamic_generate'] && $size != 'original'){
             $url = "resource-generate-image?filename=".urlencode($filename)."&type=".urlencode($type)."&size=".urlencode($size);
             return \URL::to($url);
         }
