@@ -23,6 +23,19 @@ class ImageResizer
         $this->configure($config);
     }
 
+    public function getDefaultTypeConfig()
+    {
+        $type = array(
+            'original' => public_path() . '/',
+            'crop' => [
+                'enabled' => false
+            ],
+            'compiled' => '',
+            'sizes' => []
+        );
+        return $type;
+    }
+
     /**
      * Overrides configuration settings
      *
@@ -31,6 +44,11 @@ class ImageResizer
     public function configure(array $config = array())
     {
         $this->config = array_replace($this->config, $config);
+        $default_type = $this->getDefaultTypeConfig();
+        // Types of images must be combined with default values
+        foreach ($config['types'] as $key => $value) {
+            $this->config['types'][$key] = array_replace($default_type, $this->config['types'][$key]);
+        }
         return $this;
     }
 
@@ -51,7 +69,7 @@ class ImageResizer
         $file->move($dest, $filename);
     }
 
-    public function upload($type, $input, $name)
+    public function upload($type, $input, $name, $crop_dimentions = null)
     {
         // Get Configurations
         $config = $this->config;
@@ -59,17 +77,62 @@ class ImageResizer
         $compiled = $config['types'][$type]['compiled'];
         $sizes = $config['types'][$type]['sizes'];
 
+        // Check if cropping has to be applied
+        $crop = $config['types'][$type]['crop']['enabled'];
+
         // Save the original Image File
         $uploaded = \Request::file($input);
         $ext = $uploaded->getClientOriginalExtension();
         $slug = str_slug($name);
         $rand = str_random(7);
         $filename = "$slug-$rand.$ext";
-        $file = $uploaded->move($original, $filename);
+
+        if($crop && !empty($crop_dimentions))
+        {
+            // If path for un-cropped image is defined then image will be saved there
+            // else it will be saved to original folder of image
+            $uncropped_image = array_key_exists('uncropped_image', $config['types'][$type]['crop']) ? $config['types'][$type]['crop']['uncropped_image'] : $original;
+            $file = $uploaded->move($uncropped_image, $filename);
+            // New Random will be generated
+            $rand = str_random(7);
+            // File Name will be changed as the cropped image name should be returned
+            $filename = "$slug-$rand.$ext";
+
+            // Crop Image & Save
+            $img = \Image::make($file->getRealPath());
+
+            if(count($crop_dimentions) == 4)
+            {
+                $width = $crop_dimentions[0];
+                $height = $crop_dimentions[1];
+                $img->crop($crop_dimentions[0], $crop_dimentions[1], $crop_dimentions[2], $crop_dimentions[3]);
+            }
+            else if(count($crop_dimentions) == 2)
+            {
+                $width = $crop_dimentions[0];
+                $height = $crop_dimentions[1];
+                $img->crop($crop_dimentions[0], $crop_dimentions[1]);
+            }
+            else
+            {
+                throw new Exception('Invalid Crop Dimention value provided.');
+            }
+
+            // Generate Real Path for the resizing input
+            $real_path = "$original/$filename";
+            // finally we save the image as a new file
+            $img->save($real_path);
+            $img->destroy();
+        }
+        else
+        {
+            $file = $uploaded->move($original, $filename);
+            $real_path = $file->getRealPath();
+        }
 
         foreach ($sizes as $key => $s) {
             // open an image file
-            $img = \Image::make($file->getRealPath());
+            $img = \Image::make($real_path);
 
             switch ($s[2]) {
                 case 'stretch':
