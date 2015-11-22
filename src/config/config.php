@@ -20,6 +20,10 @@ return array(
     'types' => [
         'profile' => [
             'original' => storage_path() . '/profile',
+            'crop' => [
+                'enabled' => true,
+                'uncropped_image' => storage_path() . '/profile/uncropped',
+            ],
             'compiled' => 'images/profile',
             'default' => 'images/profile-default.jpg',
             'sizes' => [
