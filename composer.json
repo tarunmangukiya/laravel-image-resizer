@@ -1,5 +1,5 @@
 {
-    "name": "tarunmangukiya/image-resizer",
+    "name": "tarunmangukiya/laravel-image-resizer",
     "description": "Laravel 5 Package for Image uploading, auto-resizing and retriving library.",
     "type": "stand-alone",
     "require": {
