@@ -196,7 +196,7 @@ class ImageResizer
                 $img->resize($size[0], $size[1], function ($constraint) {
                     $constraint->aspectRatio();
                 });
-                $img->save(str_replace('.', uniqid().'.', $target));
+                // $img->save(str_replace('.', uniqid().'.', $target));
                 $framesProcessed[] = $img->getCore();
             }
         }
