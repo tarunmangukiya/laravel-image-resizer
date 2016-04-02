@@ -5,6 +5,7 @@ namespace TarunMangukiya\ImageResizer;
 use Closure;
 use Exception;
 use Intervention\Image\ImageManager as InterImage;
+use TarunMangukiya\ImageResizer\Commands\ResizeImages;
 
 class ImageResizer
 {
@@ -20,7 +21,7 @@ class ImageResizer
      *
      * @var array
      */
-    public $interImage = array();
+    public $interImage;
 
     /**
      * Creates new instance of Image Resizer
@@ -33,6 +34,11 @@ class ImageResizer
         $this->interImage = new InterImage;
     }
 
+
+    /**
+     * Default Config for Image Resizer
+     * @return array
+     */
     public function getDefaultTypeConfig()
     {
         $type = array(
@@ -46,6 +52,10 @@ class ImageResizer
         return $type;
     }
 
+    /**
+     * Default config format for size array of image type
+     * @return array
+     */
     public function getDefaultSizeConfig()
     {
         $size = [ null, null, 'fit', 'jpg', 'non-animated' ];
@@ -73,11 +83,22 @@ class ImageResizer
         return $this;
     }
 
+    /**
+     * Information about package
+     * @return string
+     */
+
     public function info()
     {
         echo "Tarun Mangukiya ImageResizer Package for Laravel 5.0+";
     }
 
+
+    /**
+     * Get Config related to specific type only
+     * @param string $type 
+     * @return array
+     */
     public function getTypeConfig($type)
     {
         if(!isset($this->config['types'][$type]))
@@ -86,23 +107,62 @@ class ImageResizer
         return $this->config['types'][$type];
     }
 
-    public function moveUploadedFile($input, $name, $location)
+    /**
+     * Get Confir related to specific type and size
+     * @param string $type 
+     * @param string $size 
+     * @return array
+     */
+    public function getTypeSizeConfig($type, $size)
+    {
+        if(!isset($this->config['types'][$type]))
+            throw new \TarunMangukiya\ImageResizer\Exception\InvalidTypeException("Invalid Image Resize Type '{$type}'. Please check your config.");
+
+        $type_config = $this->config['types'][$type];            
+
+        foreach ($type_config['sizes'] as $key => $s)
+        {
+            if($key === $size) {
+                $required_size = $s;
+                break;
+            }
+        }
+
+        $type_config['sizes'] = [];
+        $type_config['sizes'][$size] = $required_size;
+
+        return $type_config;
+    }
+
+    /**
+     * Move Uploaded file to the specified location
+     * @param string $input 
+     * @param string $name 
+     * @param string $location 
+     * @return ImageFile instance
+     */
+    protected function moveUploadedFile($input, $name, $location)
     {
         $uploaded = \Request::file($input);
 
         // Save the original Image File
         $image_file = new ImageFile;
         $image_file->originalname = $uploaded->getClientOriginalName();
+        $image_file->filename = $this->generateFilename($name);
         $image_file->extension = $uploaded->getClientOriginalExtension();
-        $image_file->basename = $this->generateFilename($name);
         $image_file->mime = $uploaded->getMimeType();
-        $image_file->fullpath = $location . '/' . $image_file->getFileName();
+        $image_file->fullpath = $location . '/' . $image_file->getBaseName();
         
-        $uploaded->move($location, $image_file->getFileName());
+        $uploaded->move($location, $image_file->getBaseName());
 
         return $image_file;
     }
 
+    /**
+     * Generate File Name for images
+     * @param string $name 
+     * @return string
+     */
     public function generateFilename($name)
     {
         $slug = str_slug($name);
@@ -110,6 +170,13 @@ class ImageResizer
         return "$slug-$rand";
     }
 
+    /**
+     * Transfer file from http/https url to support online url upload
+     * @param string $input 
+     * @param string $name 
+     * @param string $location 
+     * @return ImageFile instance
+     */
     public function transferURLFile($input, $name, $location)
     {
         // Save the original Image File from URL
@@ -123,29 +190,47 @@ class ImageResizer
         return $image_file;
     }
 
-    public function cropImage($original_file, $type_config, $dimensions)
+    /**
+     * Apply Crop, Rotate Transofrmations Image File if enabled in config
+     * @param string $original_file 
+     * @param array $type_config 
+     * @param array $crop 
+     * @param array|null $rotate 
+     * @return ImageFile instance
+     */
+    public function transformImage($original_file, $type_config, $crop, $rotate = null)
     {
         $img = $this->interImage->make($original_file->fullpath);
 
         // If crop dimenssion is relative
-        if(count($dimensions) == 4)
+        if(count($crop) == 4)
         {
             // ($width, $height, $x, $y)
-            $img->crop($dimensions[0], $dimensions[1], $dimensions[2], $dimensions[3]);
+            $img->crop($crop[0], $crop[1], $crop[2], $crop[3]);
         }
         // If crop dimenssion is absolute
-        else if(count($dimensions) == 2)
+        else if(count($crop) == 2)
         {
             // ($width, $height)
-            $img->crop($dimensions[0], $dimensions[1]);
+            $img->crop($crop[0], $crop[1]);
         }
         else
         {
             throw new \TarunMangukiya\ImageResizer\Exception\InvalidCropDimensionException('Invalid Crop Dimensions provided.');
         }
 
+        // Rotate Image 
+        if($rotate !== null){
+            if(count($rotate) == 2) {
+                $img->rotate($rotate[0], $rotate[1]);
+            }
+            else{
+                $img->rotate($rotate[0]);
+            }
+        }
+
         // Generate Real Path for the resizing input
-        $location = $type_config['original'] .'/'. $original_file->getFileName();
+        $location = $type_config['original'] .'/'. $original_file->getBaseName();
         // finally we save the image as a new file
         $img->save( $location );
         $img->destroy();
@@ -154,121 +239,15 @@ class ImageResizer
         return $file->setFileInfoFromPath($location);
     }
 
-    public function resizeImage($fullpath, $target, $size)
-    {
-        $img = $this->interImage->make($fullpath);
-
-        // Check if height or width is set to auto then resize must be according to the aspect ratio
-        if($size[0] == null || $size[1] == null){
-            $img->resize($size[0], $size[1], function ($constraint) {
-                $constraint->aspectRatio();
-            });
-        }
-        elseif ($size[2] == 'stretch') {
-            // Stretch Image
-            $img->resize($size[0], $size[1]);
-        }
-        else {
-            // Default Fit
-            $img->fit($size[0], $size[1]);
-        }
-
-        // finally we save the image as a new file
-        $img->save($target);
-        $img->destroy();
-    }
-
-    public function resizeAnimatedImage($fullpath, $target, $size)
-    {
-        // Extract image using \GifFrameExtractor\GifFrameExtractor;
-
-        //$gifExtractor = new \Intervention\Gif\Decoder($fullpath);
-        //$decoded = $gifExtractor->decode();
-
-        $gifFrameExtractor = new \GifFrameExtractor\GifFrameExtractor;
-        $frames = $gifFrameExtractor->extract($fullpath);   
-
-        // Check if height or width is set to auto then resize must be according to the aspect ratio
-        if($size[0] == null || $size[1] == null){
-            // Resize each frames
-            foreach ($frames as $frame) {
-                $img = $this->interImage->make($frame['image']);
-                $img->resize($size[0], $size[1], function ($constraint) {
-                    $constraint->aspectRatio();
-                });
-                // $img->save(str_replace('.', uniqid().'.', $target));
-                $framesProcessed[] = $img->getCore();
-            }
-        }
-        elseif ($size[2] == 'stretch') {
-            // Stretch Image
-            // Resize each frames
-            foreach ($frames as $frame) {
-                $img = $this->interImage->make($frame['image']);
-                $img->resize($size[0], $size[1]);
-                $framesProcessed[] = $img->getCore();
-            }
-        }
-        else {
-            // Default Fit
-            // Resize each frames
-            foreach ($frames as $frame) {
-                $img = $this->interImage->make($frame['image']);
-                $img->fit($size[0], $size[1]);
-                $framesProcessed[] = $img->getCore();
-            }
-        }
-
-        $gifCreator = new \GifCreator\GifCreator;
-        $gifCreator->create($framesProcessed, $gifFrameExtractor->getFrameDurations(), 0);
-        $gifBinary = $gifCreator->getGif();
-        $gifCreator->reset();
-
-        \File::put($target, $gifBinary);
-
-        // Release Memory
-        unset($gifFrameExtractor);
-        unset($gifCreator);
-    }
-
-    public function resizeTypeImages($file, $type_config)
-    {
-        $sizes = $type_config['sizes'];
-        $compiled_path = $type_config['compiled'];
-        $filename = $file->basename;
-
-        foreach ($sizes as $folder => $size) {
-            $width = $size[0];
-            $height = $size[1];
-            $scaling = $size[2];
-            $extension = $size[3];
-
-            if($extension == 'original') $extension = $file->extension;
-
-            $is_animated = false;
-            if($extension == 'gif' && $size[4] == 'animated') {
-                // Check if animated is enabled for gif images
-                if($type_config['crop']['enabled']) {
-                    throw new \TarunMangukiya\ImageResizer\Exception\InvalidConfigException('Crop function along with animated gif is not allowed. Please disable crop or animated gif resize in config.');
-                }
-                if(!class_exists('\GifFrameExtractor\GifFrameExtractor') || !class_exists('\GifCreator\GifCreator')){
-                    throw new \TarunMangukiya\ImageResizer\Exception\InvalidConfigException('You need to install "Sybio/GifFrameExtractor" and "Sybio/GifCreator" packages to resize animated gif files.');
-                }
-                $is_animated = \GifFrameExtractor\GifFrameExtractor::isAnimatedGif($file->fullpath);
-            }
-
-            $target = "{$compiled_path}/{$folder}/{$filename}-{$width}x{$height}.{$extension}";
-            
-            if($is_animated){
-                $this->resizeAnimatedImage($file->fullpath, $target, $size);
-            }
-            else{
-                // resize normal non-animated files
-                $this->resizeImage($file->fullpath, $target, $size);
-            }
-        }
-    }
-
+    /**
+     * Upload & Resize the file from \File or url
+     * @param string $type 
+     * @param string $input 
+     * @param string $name 
+     * @param array|null $crop 
+     * @param array|null $rotate 
+     * @return ImageFile instance
+     */
     public function upload($type, $input, $name, $crop = null, $rotate = null)
     {
         // Get Config for the current Image type
@@ -296,18 +275,33 @@ class ImageResizer
 
         // crop the image if enabled
         if($crop_enabled) {
-            $file = $this->cropImage($original_file, $type_config, $crop);
+            $file = $this->transformImage($original_file, $type_config, $crop, $rotate);
         }
         else{
             $file = $original_file;
         }
 
-        $this->resizeTypeImages($file, $type_config);
+        $job = new ResizeImages($file, $type_config);
+        // Check if we have to queue the resize of the image        
+        if($this->config['queue']){
+            \Queue::pushOn($this->config['queue_name'], $job);
+        }
+        else {
+            $job->handle();
+        }
 
         return $file;
     }
 
-    public function upload_old($type, $input, $name, $crop_dimentions = null)
+    /**
+     * Removed** Upload Old function, kept here for reference only
+     * @param type $type 
+     * @param type $input 
+     * @param type $name 
+     * @param type|null $crop_dimentions 
+     * @return type
+     */
+    private function upload_old($type, $input, $name, $crop_dimentions = null)
     {
         // Get Configurations
         $config = $this->config;
@@ -391,6 +385,13 @@ class ImageResizer
         return $filename;
     }
 
+    /**
+     * Retrive Resized Image from File Basename
+     * @param string $type 
+     * @param string $size 
+     * @param string $basename 
+     * @return string
+     */
     public function get($type, $size, $basename)
     {
         $type_config = $this->getTypeConfig($type);
@@ -429,11 +430,11 @@ class ImageResizer
             if($extension == 'original') $extension = $file_extension;
             $new_path = "{$compiled_path}/{$size}/{$filename}-{$width}x{$height}.{$extension}";
         }
-
+        var_dump($new_path);
         if(file_exists($new_path)){
             return \URL::to($new_path);
         }
-        else if(!file_exists("$original/$filename") && isset($type_config['default'])){
+        else if(!file_exists("$original/$basename") && isset($type_config['default'])){
             return \URL::to($config['types'][$type]['default']);
         }
         else if($config['dynamic_generate'] && $size != 'original'){
@@ -443,6 +444,10 @@ class ImageResizer
         return \URL::to($new_path);
     }
 
+    /**
+     * Helper Function to create directories according to config
+     * @return void
+     */
     public function makeDirs()
     {
         $types = $this->config['types'];

@@ -1,6 +1,7 @@
 <?php namespace TarunMangukiya\ImageResizer;
 
 use App\Http\Controllers\Controller;
+use TarunMangukiya\ImageResizer\Commands\ResizeImages;
 
 class ImageController extends Controller {
 
@@ -15,44 +16,22 @@ class ImageController extends Controller {
   */
   public function getGenerateImage()
   {
-    if(\Input::has('filename') && \Input::has('type') && \Input::has('size')){
-      $filename = \Input::get('filename');
+    if(\Input::has('filename') && \Input::has('type') && \Input::has('size')) {
+      $basename = \Input::get('filename');
       $type = \Input::get('type');
       $size = \Input::get('size');
 
-      // Get Configurations
-      $config = \Config::get('imageresizer');
-      $original = $config['types'][$type]['original'];
-      $compiled = $config['types'][$type]['compiled'];
-      $s = $config['types'][$type]['sizes'][$size];
+      $type_config = \ImageResizer::getTypeSizeConfig($type, $size);
 
-      $input_file = "$original/$filename";
+      $image_file = new ImageFile;
+      $image_file = $image_file->setFileInfoFromPath($type_config['original'].'/'.$basename);
 
-      if(!file_exists($input_file)){
-        abort(404);
-      }
+      // have to execute the job in sync as the user is asking for the image, may be job is pending or failed, etc.
+      $job = new ResizeImages($image_file, $type_config);
+      $job->handle();
 
-      $pathinfo = pathinfo($filename);
-      $output_file = $compiled . '/' . $size . '/' . $pathinfo["filename"] . "-$s[0]x$s[1]." . $pathinfo["extension"];
-
-      // open an image file
-      $img = \Image::make($input_file);
-
-      switch ($s[2]) {
-          case 'stretch':
-              $img->resize($s[0], $s[1]);
-              break;
-          default:
-              //Default Fit
-              $img->fit($s[0], $s[1]);
-              break;
-      }
-
-      // finally we save the image as a new file
-      $img->save($output_file);
-      $img->destroy();
-
-      return \Redirect::to($output_file);
+      $location = \ImageResizer::get($type, $size, $basename);
+      return \Redirect::to($location);
     }
     else{
       abort(404);

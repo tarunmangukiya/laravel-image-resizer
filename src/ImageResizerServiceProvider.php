@@ -37,19 +37,19 @@ class ImageResizerServiceProvider extends ServiceProvider
         /*
          * Register the service provider for the dependency.
          */
-        $this->app->register('Intervention\Image\ImageServiceProvider');
+        // $this->app->register('Intervention\Image\ImageServiceProvider');
 
         /*
          * Create aliases for the dependency.
          */
-        $loader = \Illuminate\Foundation\AliasLoader::getInstance();
-        $loader->alias('Image', 'Intervention\Image\Facades\Image');
+        // $loader = \Illuminate\Foundation\AliasLoader::getInstance();
+        // $loader->alias('Image', 'Intervention\Image\Facades\Image');
 
-        $this->app['ImageResizer'] = $this->app->share(function ($app) {
+        $this->app['imageresizer'] = $this->app->share(function ($app) {
             return new ImageResizer($this->app['config']->get('imageresizer'));
         });
 
-        $this->app->alias('ImageResizer', 'TarunMangukiya\ImageResizer\ImageManager');
+        // $this->app->alias('ImageResizer', 'TarunMangukiya\ImageResizer\ImageManager');
 
         include __DIR__.'/routes.php';
     }

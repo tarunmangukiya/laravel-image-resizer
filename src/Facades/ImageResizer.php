@@ -8,6 +8,6 @@ class ImageResizer extends Facade
 {
     protected static function getFacadeAccessor()
     {
-        return 'ImageResizer';
+        return 'imageresizer';
     }
 }

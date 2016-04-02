@@ -21,11 +21,11 @@ class ImageFile
     public $originalname;
 
     /**
-     * Basename of current file
+     * Filename of current file (without extension)
      *
      * @var string
      */
-    public $basename;
+    public $filename;
 
     /**
      * File extension of current file
@@ -40,9 +40,9 @@ class ImageFile
      * @var string
      */
     
-    public function getFileName()
+    public function getBaseName()
     {
-        return "{$this->basename}.{$this->extension}";
+        return "{$this->filename}.{$this->extension}";
     }
 
     /**
@@ -63,7 +63,8 @@ class ImageFile
         $info = pathinfo($path);
         $this->fullpath = $path;
         $this->dirname = array_key_exists('dirname', $info) ? $info['dirname'] : null;
-        $this->originalname = $this->basename = array_key_exists('basename', $info) ? $info['basename'] : null;
+        $this->originalname = array_key_exists('basename', $info) ? $info['basename'] : null;
+        $this->filename = array_key_exists('filename', $info) ? $info['filename'] : null;
         $this->extension = array_key_exists('extension', $info) ? $info['extension'] : null;
 
         if (file_exists($path) && is_file($path)) {
@@ -92,7 +93,7 @@ class ImageFile
     /**
       * Get file path by string
       * 
-      * @return mixed
+      * @return string
       */
     public function __toString ()
     {
