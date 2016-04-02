@@ -23,7 +23,7 @@
     },
     "suggest": {
         "sybio/gif-frame-extractor": "to extract animated gif images.",
-        "sybio/gif-creator": "to create & resize animated gif images.",
+        "sybio/gif-creator": "to create & resize animated gif images."
     },
     "minimum-stability": "dev"
 }
