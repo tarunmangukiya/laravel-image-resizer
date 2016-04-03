@@ -1,0 +1,29 @@
+{
+    "name": "tarunmangukiya/laravel-image-resizer",
+    "description": "Laravel 5 Package for Image uploading, auto-resizing and retriving library.",
+    "require": {
+        "php": ">=5.4.0",
+        "intervention/image": "^2.3"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "4.*",
+        "phpspec/phpspec": "2.1.x"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Tarun Mangukiya",
+            "email": "tarunmangukiya@hotmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "TarunMangukiya\\ImageResizer\\": "src/"
+        }
+    },
+    "suggest": {
+        "sybio/gif-frame-extractor": "to extract animated gif images.",
+        "sybio/gif-creator": "to create & resize animated gif images."
+    },
+    "minimum-stability": "dev"
+}
