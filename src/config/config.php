@@ -47,6 +47,35 @@ return array(
 
     'dynamic_generate' => false,
 
+    /*
+    |--------------------------------------------------------------------------
+    | Base URL
+    |--------------------------------------------------------------------------
+    |
+    | Provides the support of base url, this url will be used to serve the images.
+    | You can use pull-cdn with the Laravel Image Resizer as a base url for production env.
+    |
+    | Default: ''
+    |
+    */
+
+    'base_url' => '',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Ignore Environments
+    |--------------------------------------------------------------------------
+    |
+    | The environments for which base_url will be ignored.
+    | Better for local environment testing.
+    |
+    | Default: 'local'
+    |
+    */
+
+    'ignore_environments' => array(
+        'local',
+    ),
 
     /*
     |--------------------------------------------------------------------------
