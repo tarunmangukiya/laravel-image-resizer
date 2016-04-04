@@ -272,7 +272,6 @@ class ImageResizer
         else {
             throw new \TarunMangukiya\ImageResizer\Exception\InvalidInputException("Invalid Input for Image Resizer.");
         }
-
         // crop the image if enabled
         if($crop_enabled) {
             $file = $this->transformImage($original_file, $type_config, $crop, $rotate);
@@ -422,15 +421,15 @@ class ImageResizer
 
             // File Name match
             $pathinfo = pathinfo($basename);
-            $filename = $pathinfo['filename'];
-            $file_extension = $pathinfo['extension'];
+            $filename = isset($pathinfo['filename'])?$pathinfo['filename']:'';
+            $file_extension = isset($pathinfo['extension'])?$pathinfo['extension']:'';
 
             // Match Proper Extension
             $extension = $s[3];
             if($extension == 'original') $extension = $file_extension;
             $new_path = "{$compiled_path}/{$size}/{$filename}-{$width}x{$height}.{$extension}";
         }
-        var_dump($new_path);
+        
         if(file_exists($new_path)){
             return \URL::to($new_path);
         }
