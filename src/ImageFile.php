@@ -33,6 +33,13 @@ class ImageFile
      * @var string
      */
     public $extension;
+    
+    /**
+     * File extension of current file
+     *
+     * @var string
+     */
+    public $size = [];
 
     /**
      * File name of current file
@@ -68,6 +75,7 @@ class ImageFile
         $this->extension = array_key_exists('extension', $info) ? $info['extension'] : null;
 
         if (file_exists($path) && is_file($path)) {
+            $this->size = getimagesize($path);
             $this->mime = finfo_file(finfo_open(FILEINFO_MIME_TYPE), $path);
         }
 
@@ -90,6 +98,27 @@ class ImageFile
         return false;
     }
 
+     /**
+      * Get image file size
+      * 
+      * @return mixed
+      */
+    public function sizes()
+    {
+        if(empty($this->size)){
+            $path = $this->fullpath;
+
+            if (file_exists($path) && is_file($path)) {
+                $this->size = getimagesize($path);
+                return $this->size;
+            }
+        }
+        else {
+            return $this->size;
+        }
+        return false;
+    }
+
     /**
       * Get file path by string
       * 
@@ -97,7 +126,7 @@ class ImageFile
       */
     public function __toString ()
     {
-        return $this->getFileName();
+        return $this->getBaseName();
     }
 
 }
