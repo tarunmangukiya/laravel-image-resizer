@@ -273,7 +273,7 @@ class ImageResizer
             throw new \TarunMangukiya\ImageResizer\Exception\InvalidInputException("Invalid Input for Image Resizer.");
         }
         // crop the image if enabled
-        if($crop_enabled) {
+        if($crop_enabled && !empty($crop)) {
             $file = $this->transformImage($original_file, $type_config, $crop, $rotate);
         }
         else{
