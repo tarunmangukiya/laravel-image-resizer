@@ -180,7 +180,14 @@ class ImageResizer
     public function transferURLFile($input, $name, $location)
     {
         // Save the original Image File from URL
-        $filename = $this->generateFilename($name).'.'.pathinfo($input, PATHINFO_EXTENSION);
+
+        // Identify the extension of the file, as many files would be accessible via 
+        // token or access codes only
+        // thus we need to seperate a proper extension from it
+        $extension = pathinfo(parse_url($input, PHP_URL_PATH), PATHINFO_EXTENSION);
+        // Default Extension will be jpg
+        if(empty($extension)) $extension = 'jpg';
+        $filename = $this->generateFilename($name).'.'.$extension;
 
         $fullpath = $location .'/'. $filename;
         \File::copy($input, $fullpath);
