@@ -47,7 +47,8 @@ class ImageResizer
                 'enabled' => false
             ],
             'compiled' => '',
-            'sizes' => []
+            'sizes' => [],
+            'clear_invalid_uploads' => false
         );
         return $type;
     }
@@ -194,6 +195,14 @@ class ImageResizer
 
         $image_file = new ImageFile;
         $image_file = $image_file->setFileInfoFromPath($fullpath);
+        
+        if(!exif_imagetype($fullpath)) {
+            if($this->config['clear_invalid_uploads']){
+                \File::delete($fullpath);
+            }
+
+            throw new \TarunMangukiya\ImageResizer\Exception\InvalidInputException("Invalid Input for Image Resizer.");
+        }
         return $image_file;
     }
 
@@ -470,5 +479,6 @@ class ImageResizer
                 \File::makeDirectory($path, 0777, true, true);
             }
         }
+        return true;
     }
 }

@@ -120,4 +120,18 @@ return array(
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Clear Invalid Uplaoded Files
+    |--------------------------------------------------------------------------
+    |
+    | In case of Upload Image from URL, it may happen that someone tries to upload invalid image,
+    | setting this true will delete the file to free the space.
+    |
+    | Default: 'true'
+    |
+    */
+
+    'clear_invalid_uploads' => true
+
 );
