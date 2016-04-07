@@ -191,7 +191,11 @@ class ImageResizer
         $filename = $this->generateFilename($name).'.'.$extension;
 
         $fullpath = $location .'/'. $filename;
-        \File::copy($input, $fullpath);
+        try {
+            \File::copy($input, $fullpath);
+        } catch (Exception $e) {
+            throw new \TarunMangukiya\ImageResizer\Exception\InvalidInputException("Invalid Input for Image Resizer.");
+        }
 
         $image_file = new ImageFile;
         $image_file = $image_file->setFileInfoFromPath($fullpath);
