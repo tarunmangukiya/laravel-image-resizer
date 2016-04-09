@@ -120,6 +120,9 @@ return array(
         ],
     ],
 
+
+    'valid_extensions' => ['gif', 'jpeg', 'png', 'bmp', 'jpg'],
+
     /*
     |--------------------------------------------------------------------------
     | Clear Invalid Uplaoded Files

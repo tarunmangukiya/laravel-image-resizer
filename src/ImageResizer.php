@@ -136,6 +136,21 @@ class ImageResizer
     }
 
     /**
+     * Check If the provided url or extension is valid
+     * @param type $url 
+     * @return type
+     */
+    public function hasImageExtension($url) 
+    {
+        $valid_image_extensions = $this->config['valid_extensions'];
+        $extension = strtolower(pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION));
+        if(in_array($extension, $valid_image_extensions)) {
+            return $extension;
+        }
+        return false;
+    }
+
+    /**
      * Move Uploaded file to the specified location
      * @param string $input 
      * @param string $name 
@@ -185,9 +200,10 @@ class ImageResizer
         // Identify the extension of the file, as many files would be accessible via 
         // token or access codes only
         // thus we need to seperate a proper extension from it
-        $extension = pathinfo(parse_url($input, PHP_URL_PATH), PATHINFO_EXTENSION);
+        $extension = $this->hasImageExtension($input);
         // Default Extension will be jpg
-        if(empty($extension)) $extension = 'jpg';
+        if(!$extension) $extension = 'jpg';
+
         $filename = $this->generateFilename($name).'.'.$extension;
 
         $fullpath = $location .'/'. $filename;
