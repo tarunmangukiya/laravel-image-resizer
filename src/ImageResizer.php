@@ -286,6 +286,9 @@ class ImageResizer
      */
     public function upload($type, $input, $name, $crop = null, $rotate = null)
     {
+        if(strlen($name) > 255) 
+            throw new \TarunMangukiya\ImageResizer\Exception\TooLongFileNameException("Error Processing Request", 1);
+            
         // Get Config for the current Image type
         $type_config = $this->getTypeConfig($type);
         $crop_enabled = $type_config['crop']['enabled'];
