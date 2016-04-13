@@ -3,6 +3,7 @@
 namespace TarunMangukiya\ImageResizer;
 
 use Illuminate\Support\ServiceProvider;
+use TarunMangukiya\ImageResizer\Console\Commands\MakeDirs;
 
 class ImageResizerServiceProvider extends ServiceProvider
 {
@@ -48,6 +49,12 @@ class ImageResizerServiceProvider extends ServiceProvider
         $this->app['imageresizer'] = $this->app->share(function ($app) {
             return new ImageResizer($this->app['config']->get('imageresizer'));
         });
+
+        $this->app['command.imageresizer.makedirs'] = $this->app->share(function ($app)
+        {
+            return new MakeDirs($this->app['config']->get('imageresizer'));
+        });
+        $this->commands(['command.imageresizer.makedirs']);
 
         // $this->app->alias('ImageResizer', 'TarunMangukiya\ImageResizer\ImageManager');
 
