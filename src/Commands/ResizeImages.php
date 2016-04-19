@@ -50,6 +50,12 @@ class ResizeImages extends Job implements SelfHandling, ShouldQueue
 	 */
 	public function handle()
 	{
+        // Before handling the file resize
+        // change the directory to public path of laravel
+        // as many of the path will be used from public_path
+        
+        chdir(public_path());
+        
         \Log::info('ImageResizer for queue: '.$this->imageFile->fullpath);
 
         // Initialize InterImage Instance first
@@ -89,6 +95,7 @@ class ResizeImages extends Job implements SelfHandling, ShouldQueue
                 $this->resizeImage($this->imageFile->fullpath, $target, $size);
             }
         }
+        \Log::info('ImageResizer Resized: '.$this->imageFile->fullpath);
     }
 
 
