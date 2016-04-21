@@ -19,9 +19,17 @@ class ImageResizer
     /**
      * Intervention ImageManager Instance
      *
-     * @var array
+     * @var instance of InterImage
      */
-    public $interImage;
+    private $interImage;
+
+    /**
+     * GuzzleHttp Client Instance for Transferring file from url
+     * 
+     * @var instance of \GuzzleHttp\Client
+     */
+
+    private $guzzleHttp;
 
     /**
      * Creates new instance of Image Resizer
@@ -32,6 +40,7 @@ class ImageResizer
     {
         $this->configure($config);
         $this->interImage = new InterImage;
+        $this->guzzleHttp = new \GuzzleHttp\Client;
     }
 
 
@@ -207,9 +216,13 @@ class ImageResizer
         $filename = $this->generateFilename($name).'.'.$extension;
 
         $fullpath = $location .'/'. $filename;
+
+        // Get page using HTTP GET Request as loading copying directly causes 403 error sometimes in different cases of redirect
         try {
-            \File::copy($input, $fullpath);
-        } catch (Exception $e) {
+            $response = $this->guzzleHttp->get($input, [
+                    'sink' => $fullpath
+                ]);
+        } catch (\Exception $e) {
             throw new \TarunMangukiya\ImageResizer\Exception\InvalidInputException("Invalid Input for Image Resizer.");
         }
 
@@ -449,7 +462,7 @@ class ImageResizer
         // Check if user wants the original Image
         if($size == 'original')
         {
-            $new_path = "$compiled_path/$basename";
+            $new_path = "$original/$basename";
         }
         else
         {
