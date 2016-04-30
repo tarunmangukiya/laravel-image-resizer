@@ -40,7 +40,12 @@ class ImageResizer
     {
         $this->configure($config);
         $this->interImage = new InterImage;
-        $this->guzzleHttp = new \GuzzleHttp\Client;
+        $this->guzzleHttp = new \GuzzleHttp\Client([
+                        'headers' => [
+                            'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.112 Safari/537.36',
+                            'Accept'     => 'text/html,application/xhtml+xml,application/xml;q=0.9,/;q=0.8'
+                        ]
+                    ]);
     }
 
 
@@ -445,6 +450,8 @@ class ImageResizer
      */
     public function get($type, $size, $basename)
     {
+        $this->changeDir();
+
         $type_config = $this->getTypeConfig($type);
 
         $config = $this->config;
@@ -501,6 +508,8 @@ class ImageResizer
      */
     public function makeDirs()
     {
+        $this->changeDir();
+        
         $types = $this->config['types'];
         foreach ($types as $key => $type) {
             $sizes = $type['sizes'];
@@ -516,5 +525,16 @@ class ImageResizer
             }
         }
         return true;
+    }
+
+    /**
+     * Before handling the file resize
+     * change the directory to public path of laravel
+     * as many of the path will be used from public_path
+     * @return void
+     */
+    public function changeDir()
+    {
+        chdir(public_path());
     }
 }
