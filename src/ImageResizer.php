@@ -312,7 +312,7 @@ class ImageResizer
         $crop_enabled = $type_config['crop']['enabled'];
 
         // Get the original save location according to config
-        if($crop_enabled) {
+        if($crop_enabled && null !== $crop) {
             $original_location = array_key_exists('uncropped_image', $type_config['crop']) ? $type_config['crop']['uncropped_image'] : $type_config['original'];
         }
         else {
@@ -329,8 +329,9 @@ class ImageResizer
         else {
             throw new \TarunMangukiya\ImageResizer\Exception\InvalidInputException("Invalid Input for Image Resizer.");
         }
+        
         // crop the image if enabled
-        if($crop_enabled && !empty($crop)) {
+        if($crop_enabled && null !== $crop) {
             $file = $this->transformImage($original_file, $type_config, $crop, $rotate);
         }
         else{
@@ -488,7 +489,7 @@ class ImageResizer
             if($extension == 'original') $extension = $file_extension;
             $new_path = "{$compiled_path}/{$size}/{$filename}-{$width}x{$height}.{$extension}";
         }
-        
+
         if(file_exists($new_path)){
             return \URL::to($new_path);
         }
