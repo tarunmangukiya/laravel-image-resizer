@@ -19,9 +19,17 @@ class ImageResizer
     /**
      * Intervention ImageManager Instance
      *
-     * @var array
+     * @var instance of InterImage
      */
-    public $interImage;
+    private $interImage;
+
+    /**
+     * GuzzleHttp Client Instance for Transferring file from url
+     * 
+     * @var instance of \GuzzleHttp\Client
+     */
+
+    private $guzzleHttp;
 
     /**
      * Creates new instance of Image Resizer
@@ -32,6 +40,12 @@ class ImageResizer
     {
         $this->configure($config);
         $this->interImage = new InterImage;
+        $this->guzzleHttp = new \GuzzleHttp\Client([
+                        'headers' => [
+                            'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.112 Safari/537.36',
+                            'Accept'     => 'text/html,application/xhtml+xml,application/xml;q=0.9,/;q=0.8'
+                        ]
+                    ]);
     }
 
 
@@ -47,7 +61,8 @@ class ImageResizer
                 'enabled' => false
             ],
             'compiled' => '',
-            'sizes' => []
+            'sizes' => [],
+            'clear_invalid_uploads' => false
         );
         return $type;
     }
@@ -135,6 +150,21 @@ class ImageResizer
     }
 
     /**
+     * Check If the provided url or extension is valid
+     * @param type $url 
+     * @return type
+     */
+    public function hasImageExtension($url) 
+    {
+        $valid_image_extensions = $this->config['valid_extensions'];
+        $extension = strtolower(pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION));
+        if(in_array($extension, $valid_image_extensions)) {
+            return $extension;
+        }
+        return false;
+    }
+
+    /**
      * Move Uploaded file to the specified location
      * @param string $input 
      * @param string $name 
@@ -180,13 +210,37 @@ class ImageResizer
     public function transferURLFile($input, $name, $location)
     {
         // Save the original Image File from URL
-        $filename = $this->generateFilename($name).'.'.pathinfo($input, PATHINFO_EXTENSION);
+
+        // Identify the extension of the file, as many files would be accessible via 
+        // token or access codes only
+        // thus we need to seperate a proper extension from it
+        $extension = $this->hasImageExtension($input);
+        // Default Extension will be jpg
+        if(!$extension) $extension = 'jpg';
+
+        $filename = $this->generateFilename($name).'.'.$extension;
 
         $fullpath = $location .'/'. $filename;
-        \File::copy($input, $fullpath);
+
+        // Get page using HTTP GET Request as loading copying directly causes 403 error sometimes in different cases of redirect
+        try {
+            $response = $this->guzzleHttp->get($input, [
+                    'sink' => $fullpath
+                ]);
+        } catch (\Exception $e) {
+            throw new \TarunMangukiya\ImageResizer\Exception\InvalidInputException("Invalid Input for Image Resizer.");
+        }
 
         $image_file = new ImageFile;
         $image_file = $image_file->setFileInfoFromPath($fullpath);
+        
+        if(!exif_imagetype($fullpath)) {
+            if($this->config['clear_invalid_uploads']){
+                \File::delete($fullpath);
+            }
+
+            throw new \TarunMangukiya\ImageResizer\Exception\InvalidInputException("Invalid Input for Image Resizer.");
+        }
         return $image_file;
     }
 
@@ -250,12 +304,15 @@ class ImageResizer
      */
     public function upload($type, $input, $name, $crop = null, $rotate = null)
     {
+        if(strlen($name) > 255) 
+            throw new \TarunMangukiya\ImageResizer\Exception\TooLongFileNameException("Error Processing Request", 1);
+            
         // Get Config for the current Image type
         $type_config = $this->getTypeConfig($type);
         $crop_enabled = $type_config['crop']['enabled'];
 
         // Get the original save location according to config
-        if($crop_enabled) {
+        if($crop_enabled && null !== $crop) {
             $original_location = array_key_exists('uncropped_image', $type_config['crop']) ? $type_config['crop']['uncropped_image'] : $type_config['original'];
         }
         else {
@@ -272,9 +329,9 @@ class ImageResizer
         else {
             throw new \TarunMangukiya\ImageResizer\Exception\InvalidInputException("Invalid Input for Image Resizer.");
         }
-
+        
         // crop the image if enabled
-        if($crop_enabled) {
+        if($crop_enabled && null !== $crop) {
             $file = $this->transformImage($original_file, $type_config, $crop, $rotate);
         }
         else{
@@ -394,6 +451,8 @@ class ImageResizer
      */
     public function get($type, $size, $basename)
     {
+        $this->changeDir();
+
         $type_config = $this->getTypeConfig($type);
 
         $config = $this->config;
@@ -411,7 +470,7 @@ class ImageResizer
         // Check if user wants the original Image
         if($size == 'original')
         {
-            $new_path = "$compiled_path/$basename";
+            $new_path = "$original/$basename";
         }
         else
         {
@@ -422,15 +481,15 @@ class ImageResizer
 
             // File Name match
             $pathinfo = pathinfo($basename);
-            $filename = $pathinfo['filename'];
-            $file_extension = $pathinfo['extension'];
+            $filename = isset($pathinfo['filename'])?$pathinfo['filename']:'';
+            $file_extension = isset($pathinfo['extension'])?$pathinfo['extension']:'';
 
             // Match Proper Extension
             $extension = $s[3];
             if($extension == 'original') $extension = $file_extension;
             $new_path = "{$compiled_path}/{$size}/{$filename}-{$width}x{$height}.{$extension}";
         }
-        var_dump($new_path);
+
         if(file_exists($new_path)){
             return \URL::to($new_path);
         }
@@ -450,6 +509,8 @@ class ImageResizer
      */
     public function makeDirs()
     {
+        $this->changeDir();
+        
         $types = $this->config['types'];
         foreach ($types as $key => $type) {
             $sizes = $type['sizes'];
@@ -464,5 +525,17 @@ class ImageResizer
                 \File::makeDirectory($path, 0777, true, true);
             }
         }
+        return true;
+    }
+
+    /**
+     * Before handling the file resize
+     * change the directory to public path of laravel
+     * as many of the path will be used from public_path
+     * @return void
+     */
+    public function changeDir()
+    {
+        chdir(public_path());
     }
 }

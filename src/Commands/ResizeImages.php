@@ -1,16 +1,16 @@
 <?php namespace TarunMangukiya\ImageResizer\Commands;
 
-use App\Commands\Command;
-
+use App\Jobs\Job;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Contracts\Bus\SelfHandling;
-use Illuminate\Contracts\Queue\ShouldBeQueued;
+use Illuminate\Contracts\Queue\ShouldQueue;
 
 use Intervention\Image\ImageManager as InterImage;
 use TarunMangukiya\ImageResizer\ImageFile;
 
-class ResizeImages extends Command implements SelfHandling, ShouldBeQueued {
+class ResizeImages extends Job implements SelfHandling, ShouldQueue
+{
 
 	use InteractsWithQueue, SerializesModels;
 
@@ -50,12 +50,18 @@ class ResizeImages extends Command implements SelfHandling, ShouldBeQueued {
 	 */
 	public function handle()
 	{
-		\Log::info('ImageResizer for queue: '.$this->imageFile->fullpath);
+        // Before handling the file resize
+        // change the directory to public path of laravel
+        // as many of the path will be used from public_path
+        
+        chdir(public_path());
+        
+        \Log::info('ImageResizer for queue: '.$this->imageFile->fullpath);
 
-		// Initialize InterImage Instance first
+        // Initialize InterImage Instance first
         $this->interImage = new InterImage;
 
-		$sizes = $this->type_config['sizes'];
+        $sizes = $this->type_config['sizes'];
         $compiled_path = $this->type_config['compiled'];
         $filename = $this->imageFile->filename;
 
@@ -89,7 +95,8 @@ class ResizeImages extends Command implements SelfHandling, ShouldBeQueued {
                 $this->resizeImage($this->imageFile->fullpath, $target, $size);
             }
         }
-	}
+        \Log::info('ImageResizer Resized: '.$this->imageFile->fullpath);
+    }
 
 
     public function resizeImage($fullpath, $target, $size)
