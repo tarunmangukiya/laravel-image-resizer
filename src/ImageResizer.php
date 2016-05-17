@@ -43,7 +43,7 @@ class ImageResizer
         $this->guzzleHttp = new \GuzzleHttp\Client([
                         'headers' => [
                             'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.112 Safari/537.36',
-                            'Accept'     => 'text/html,application/xhtml+xml,application/xml;q=0.9,/;q=0.8'
+                            'Accept'     => 'image/png,image/gif,image/jpeg,image/pjpeg;q=0.9,text/html,application/xhtml+xml,application/xml;q=0.8,*.*;q=0.5'
                         ]
                     ]);
     }
