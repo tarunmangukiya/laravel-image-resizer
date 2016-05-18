@@ -95,7 +95,7 @@ class ResizeImages extends Job implements SelfHandling, ShouldQueue
                 $this->resizeImage($this->imageFile->fullpath, $target, $size);
             }
         }
-        \Log::info('ImageResizer Resized: '.$this->imageFile->fullpath);
+        \Log::info('ImageResizer Resized: '.$target);
     }
 
 
