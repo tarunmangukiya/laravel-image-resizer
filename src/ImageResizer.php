@@ -189,6 +189,37 @@ class ImageResizer
     }
 
     /**
+     * Copy file to the specified location
+     * @param string $input 
+     * @param string $name 
+     * @param string $location 
+     * @return ImageFile instance
+     */
+    protected function copyFile($input, $name, $location)
+    {
+        if(!exif_imagetype($input)) {
+            if($this->config['clear_invalid_uploads']){
+                \File::delete($input);
+            }
+
+            throw new \TarunMangukiya\ImageResizer\Exception\InvalidInputException("Invalid Input for Image Resizer.");
+        }
+
+        $extension = $this->hasImageExtension($input);
+        // Default Extension will be jpg
+        if(!$extension) $extension = 'jpg';
+        $filename = $this->generateFilename($name).'.'.$extension;
+        $fullpath = $location .'/'. $filename;
+
+        \File::copy($input, $fullpath);
+        
+        $image_file = new ImageFile;
+        $image_file = $image_file->setFileInfoFromPath($fullpath);
+        
+        return $image_file;
+    }
+
+    /**
      * Generate File Name for images
      * @param string $name 
      * @return string
@@ -319,10 +350,17 @@ class ImageResizer
             $original_location = $type_config['original'];
         }
 
-        // Check input type is url or $_FILES input name
+        // Check input type is $_FILES input name or local file or url
+
+        // Check for Input File
         if(\Request::hasFile($input)) {
             $original_file = $this->moveUploadedFile($input, $name, $original_location);
         }
+        // Check if file exists locally
+        elseif (file_exists($input)) {
+            $original_file = $this->copyFile($input, $name, $original_location);
+        }
+        // Check if input is url then fetch image from online
         elseif (filter_var($input, FILTER_VALIDATE_URL) !== FALSE) {
             $original_file = $this->transferURLFile($input, $name, $original_location);
         }
