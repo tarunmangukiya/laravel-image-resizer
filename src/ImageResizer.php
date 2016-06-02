@@ -62,6 +62,9 @@ class ImageResizer
             ],
             'compiled' => '',
             'sizes' => [],
+            'watermark' => [
+                'enabled' => false
+            ],
             'clear_invalid_uploads' => false
         );
         return $type;
@@ -105,25 +108,29 @@ class ImageResizer
 
     public function info()
     {
-        echo "Tarun Mangukiya ImageResizer Package for Laravel 5.0+";
+        echo "Tarun Mangukiya ImageResizer Package for Laravel 5.1+";
     }
 
 
     /**
      * Get Config related to specific type only
      * @param string $type 
+     * @param array $override_config
      * @return array
      */
-    public function getTypeConfig($type)
+    public function getTypeConfig($type, $override_config = [])
     {
         if(!isset($this->config['types'][$type]))
             throw new \TarunMangukiya\ImageResizer\Exception\InvalidTypeException("Invalid Image Resize Type '{$type}'. Please check your config.");
-            
-        return $this->config['types'][$type];
+        
+        $config = $this->config['types'][$type];
+        $config = array_replace($config, $override_config);
+
+        return $config;
     }
 
     /**
-     * Get Confir related to specific type and size
+     * Get Config related to specific type and size
      * @param string $type 
      * @param string $size 
      * @return array
@@ -333,13 +340,13 @@ class ImageResizer
      * @param array|null $rotate 
      * @return ImageFile instance
      */
-    public function upload($type, $input, $name, $crop = null, $rotate = null)
+    public function upload($type, $input, $name, $crop = null, $rotate = null, $override_config = [])
     {
         if(strlen($name) > 255) 
             throw new \TarunMangukiya\ImageResizer\Exception\TooLongFileNameException("Error Processing Request", 1);
             
         // Get Config for the current Image type
-        $type_config = $this->getTypeConfig($type);
+        $type_config = $this->getTypeConfig($type, $override_config);
         $crop_enabled = $type_config['crop']['enabled'];
 
         // Get the original save location according to config
@@ -375,7 +382,7 @@ class ImageResizer
         else{
             $file = $original_file;
         }
-
+        
         $job = new ResizeImages($file, $type_config);
         // Check if we have to queue the resize of the image        
         if($this->config['queue']){

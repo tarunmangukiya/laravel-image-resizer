@@ -116,6 +116,10 @@ return array(
                 'small' => [100, 100, 'fit', 'jpg'],
                 'normal' => [300, null, 'fit', 'original', 'animated'],
                 'large' => [400, null, 'stretch']
+            ],
+            'watermark' => [
+                'enabled' => false,
+                'normal' => ['watermarks/watermark.png', 'bottom-right', 10, 10]
             ]
         ],
     ],
@@ -125,7 +129,7 @@ return array(
 
     /*
     |--------------------------------------------------------------------------
-    | Clear Invalid Uplaoded Files
+    | Clear Invalid Uploaded Files
     |--------------------------------------------------------------------------
     |
     | In case of Upload Image from URL, it may happen that someone tries to upload invalid image,

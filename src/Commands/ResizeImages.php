@@ -92,14 +92,21 @@ class ResizeImages extends Job implements SelfHandling, ShouldQueue
             }
             else{
                 // resize normal non-animated files
-                $this->resizeImage($this->imageFile->fullpath, $target, $size);
+                $this->resizeImage($this->imageFile->fullpath, $target, $size, $folder);
             }
         }
         \Log::info('ImageResizer Resized: '.$target);
     }
 
-
-    public function resizeImage($fullpath, $target, $size)
+    /**
+     * Resize Image according to the config and save it to the target
+     * @param string $fullpath 
+     * @param string $target 
+     * @param array $size 
+     * @param string|null $size_string 
+     * @return void
+     */
+    public function resizeImage($fullpath, $target, $size, $size_string = null)
     {
         $img = $this->interImage->make($fullpath);
 
@@ -118,10 +125,27 @@ class ResizeImages extends Job implements SelfHandling, ShouldQueue
             $img->fit($size[0], $size[1]);
         }
 
+        \Log::info($this->type_config);
+        // Check if we need to add watermark to the image
+        if(null !== $size_string) {
+            if($this->type_config['watermark']['enabled'] && array_key_exists($size_string, $this->type_config['watermark'])) {
+                $watermark = $this->type_config['watermark'][$size_string];
+                $img->insert($watermark[0], $watermark[1], $watermark[2], $watermark[3]);
+            }
+        }
+
         // finally we save the image as a new file
         $img->save($target);
         $img->destroy();
     }
+
+    /**
+     * Resize Animated Gif Image according to given config and save it
+     * @param string $fullpath 
+     * @param string $target 
+     * @param array $size 
+     * @return void
+     */
 
     public function resizeAnimatedImage($fullpath, $target, $size)
     {
