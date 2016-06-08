@@ -125,7 +125,6 @@ class ResizeImages extends Job implements SelfHandling, ShouldQueue
             $img->fit($size[0], $size[1]);
         }
 
-        \Log::info($this->type_config);
         // Check if we need to add watermark to the image
         if(null !== $size_string) {
             if($this->type_config['watermark']['enabled'] && array_key_exists($size_string, $this->type_config['watermark'])) {
