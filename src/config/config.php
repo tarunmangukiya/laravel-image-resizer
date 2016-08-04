@@ -89,7 +89,8 @@ return array(
     | 'crop' => 'enabled' => whether the image has to be cropped or not,
     |         'uncropped_image' => path (where the uncropped image has to be saved)
     |                              not required, (if we do not want to save original image)
-    | 'compiled' => path where the compiled (resized) images will be saved
+    | 'compiled' => path where the compiled (resized) images will be saved, by deafult this path will be used to retrive the files
+    | 'public' => used when we are storing all the images in Storage folder or in cloud, this path will be used to retrive the images instead of compiled path
     | 'default' => default image file (that has to be retured in case of image not found)
     |                                 (can be useful for setting default profile picture)
     | 'sizes' => sizes of the images with key that has to be resized
@@ -129,6 +130,20 @@ return array(
 
     /*
     |--------------------------------------------------------------------------
+    | Append Random Characters at the end of filename
+    |--------------------------------------------------------------------------
+    |
+    | Whether to append a random 7 characters at the end of file name generated
+    | Useful to have unique file names for all the files saved
+    |
+    | Default: 'true'
+    |
+    */
+
+    'append_random_characters' => true,
+
+    /*
+    |--------------------------------------------------------------------------
     | Clear Invalid Uploaded Files
     |--------------------------------------------------------------------------
     |
@@ -139,6 +154,6 @@ return array(
     |
     */
 
-    'clear_invalid_uploads' => true
+    'clear_invalid_uploads' => true,
 
 );

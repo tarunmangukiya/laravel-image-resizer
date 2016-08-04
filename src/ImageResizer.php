@@ -5,6 +5,7 @@ namespace TarunMangukiya\ImageResizer;
 use Closure;
 use Exception;
 use Intervention\Image\ImageManager as InterImage;
+use TarunMangukiya\ImageResizer\ImageResizerConfig;
 use TarunMangukiya\ImageResizer\Commands\ResizeImages;
 
 class ImageResizer
@@ -38,67 +39,17 @@ class ImageResizer
      */
     public function __construct(array $config = array())
     {
-        $this->configure($config);
-        $this->interImage = new InterImage;
+        $this->config = ImageResizerConfig::configure($config);
+
+        // Pass Intervention Image config
+        $interConfig = config('image');
+        $this->interImage = new InterImage($interConfig);
         $this->guzzleHttp = new \GuzzleHttp\Client([
                         'headers' => [
                             'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.112 Safari/537.36',
                             'Accept'     => 'image/png,image/gif,image/jpeg,image/pjpeg;q=0.9,text/html,application/xhtml+xml,application/xml;q=0.8,*.*;q=0.5'
                         ]
                     ]);
-    }
-
-
-    /**
-     * Default Config for Image Resizer
-     * @return array
-     */
-    public function getDefaultTypeConfig()
-    {
-        $type = array(
-            'original' => public_path() . '/',
-            'crop' => [
-                'enabled' => false
-            ],
-            'compiled' => '',
-            'sizes' => [],
-            'watermark' => [
-                'enabled' => false
-            ],
-            'clear_invalid_uploads' => false
-        );
-        return $type;
-    }
-
-    /**
-     * Default config format for size array of image type
-     * @return array
-     */
-    public function getDefaultSizeConfig()
-    {
-        $size = [ null, null, 'fit', 'jpg', 'non-animated' ];
-        return $size;
-    }
-
-    /**
-     * Overrides configuration settings
-     *
-     * @param array $config
-     */
-    public function configure(array $config = array())
-    {
-        $this->config = array_replace($this->config, $config);
-        $default_type = $this->getDefaultTypeConfig();
-        
-        // Types of images must be combined with default values
-        $size = $this->getDefaultSizeConfig();
-        foreach ($config['types'] as $key => $value) {
-            $this->config['types'][$key] = array_replace($default_type, $this->config['types'][$key]);
-            foreach ($this->config['types'][$key]['sizes'] as &$s) {
-                $s = array_replace($size, $s);
-            }
-        }
-        return $this;
     }
 
     /**
@@ -109,51 +60,6 @@ class ImageResizer
     public function info()
     {
         echo "Tarun Mangukiya ImageResizer Package for Laravel 5.1+";
-    }
-
-
-    /**
-     * Get Config related to specific type only
-     * @param string $type 
-     * @param array $override_config
-     * @return array
-     */
-    public function getTypeConfig($type, $override_config = [])
-    {
-        if(!isset($this->config['types'][$type]))
-            throw new \TarunMangukiya\ImageResizer\Exception\InvalidTypeException("Invalid Image Resize Type '{$type}'. Please check your config.");
-        
-        $config = $this->config['types'][$type];
-        $config = array_replace($config, $override_config);
-
-        return $config;
-    }
-
-    /**
-     * Get Config related to specific type and size
-     * @param string $type 
-     * @param string $size 
-     * @return array
-     */
-    public function getTypeSizeConfig($type, $size)
-    {
-        if(!isset($this->config['types'][$type]))
-            throw new \TarunMangukiya\ImageResizer\Exception\InvalidTypeException("Invalid Image Resize Type '{$type}'. Please check your config.");
-
-        $type_config = $this->config['types'][$type];            
-
-        foreach ($type_config['sizes'] as $key => $s)
-        {
-            if($key === $size) {
-                $required_size = $s;
-                break;
-            }
-        }
-
-        $type_config['sizes'] = [];
-        $type_config['sizes'][$size] = $required_size;
-
-        return $type_config;
     }
 
     /**
@@ -204,7 +110,8 @@ class ImageResizer
      */
     protected function copyFile($input, $name, $location)
     {
-        if(!exif_imagetype($input)) {
+        //dd($input);
+        if(($extension = $this->hasImageExtension($input)) === false && !exif_imagetype($input)) {
             if($this->config['clear_invalid_uploads']){
                 \File::delete($input);
             }
@@ -212,7 +119,7 @@ class ImageResizer
             throw new \TarunMangukiya\ImageResizer\Exception\InvalidInputException("Invalid Input for Image Resizer.");
         }
 
-        $extension = $this->hasImageExtension($input);
+        
         // Default Extension will be jpg
         if(!$extension) $extension = 'jpg';
         $filename = $this->generateFilename($name).'.'.$extension;
@@ -234,8 +141,10 @@ class ImageResizer
     public function generateFilename($name)
     {
         $slug = str_slug($name);
-        $rand = str_random(7);
-        return "$slug-$rand";
+        if($this->config['append_random_characters']) {
+            $slug .= '-' . str_random(7);
+        }
+        return $slug;
     }
 
     /**
@@ -294,6 +203,9 @@ class ImageResizer
     {
         $img = $this->interImage->make($original_file->fullpath);
 
+        // Reset Image Rotation before doing any activity
+        $img->orientate();
+        
         // If crop dimenssion is relative
         if(count($crop) == 4)
         {
@@ -346,7 +258,7 @@ class ImageResizer
             throw new \TarunMangukiya\ImageResizer\Exception\TooLongFileNameException("Error Processing Request", 1);
             
         // Get Config for the current Image type
-        $type_config = $this->getTypeConfig($type, $override_config);
+        $type_config = ImageResizerConfig::getTypeConfig($type, $override_config);
         $crop_enabled = $type_config['crop']['enabled'];
 
         // Get the original save location according to config
@@ -382,109 +294,20 @@ class ImageResizer
         else{
             $file = $original_file;
         }
-        
-        $job = new ResizeImages($file, $type_config);
-        // Check if we have to queue the resize of the image        
-        if($this->config['queue']){
-            \Queue::pushOn($this->config['queue_name'], $job);
-        }
-        else {
-            $job->handle();
+
+        // Check if there is no resize of files
+        if(count($type_config['sizes'])) {
+            $job = new ResizeImages($file, $type_config);
+            // Check if we have to queue the resize of the image        
+            if($this->config['queue']){
+                \Queue::pushOn($this->config['queue_name'], $job);
+            }
+            else {
+                $job->handle();
+            }
         }
 
         return $file;
-    }
-
-    /**
-     * Removed** Upload Old function, kept here for reference only
-     * @param type $type 
-     * @param type $input 
-     * @param type $name 
-     * @param type|null $crop_dimentions 
-     * @return type
-     */
-    private function upload_old($type, $input, $name, $crop_dimentions = null)
-    {
-        // Get Configurations
-        $config = $this->config;
-        $original = $config['types'][$type]['original'];
-        $compiled = $config['types'][$type]['compiled'];
-        $sizes = $config['types'][$type]['sizes'];
-
-        // Check if cropping has to be applied
-        $crop = $config['types'][$type]['crop']['enabled'];
-
-        // Save the original Image File
-        $uploaded = \Request::file($input);
-        $ext = $uploaded->getClientOriginalExtension();
-        $slug = str_slug($name);
-        $rand = str_random(7);
-        $filename = "$slug-$rand.$ext";
-
-        if($crop && !empty($crop_dimentions))
-        {
-            // If path for un-cropped image is defined then image will be saved there
-            // else it will be saved to original folder of image
-            $uncropped_image = array_key_exists('uncropped_image', $config['types'][$type]['crop']) ? $config['types'][$type]['crop']['uncropped_image'] : $original;
-            $file = $uploaded->move($uncropped_image, $filename);
-            // New Random will be generated
-            $rand = str_random(7);
-            // File Name will be changed as the cropped image name should be returned
-            $filename = "$slug-$rand.$ext";
-
-            // Crop Image & Save
-            $img = \Image::make($file->getRealPath());
-
-            if(count($crop_dimentions) == 5)
-            {
-                $width = $crop_dimentions[0];
-                $height = $crop_dimentions[1];
-                $img->crop($crop_dimentions[0], $crop_dimentions[1], $crop_dimentions[2], $crop_dimentions[3]);
-            }
-            else if(count($crop_dimentions) == 2)
-            {
-                $width = $crop_dimentions[0];
-                $height = $crop_dimentions[1];
-                $img->crop($crop_dimentions[0], $crop_dimentions[1]);
-            }
-            else
-            {
-                throw new Exception('Invalid Crop Dimention value provided.');
-            }
-
-            // Generate Real Path for the resizing input
-            $real_path = "$original/$filename";
-            // finally we save the image as a new file
-            $img->save($real_path);
-            $img->destroy();
-        }
-        else
-        {
-            $file = $uploaded->move($original, $filename);
-            $real_path = $file->getRealPath();
-        }
-
-        foreach ($sizes as $key => $s) {
-            // open an image file
-            $img = \Image::make($real_path);
-
-            switch ($s[2]) {
-                case 'stretch':
-                    $img->resize($s[0], $s[1]);
-                    break;
-                default:
-                    //Default Fit
-                    $img->fit($s[0], $s[1]);
-                    break;
-            }
-
-            $target = "$compiled/$key/$slug-$rand-$s[0]x$s[1].$ext";
-            // finally we save the image as a new file
-            $img->save($target);
-            $img->destroy();
-        }
-
-        return $filename;
     }
 
     /**
@@ -496,11 +319,76 @@ class ImageResizer
      */
     public function get($type, $size, $basename)
     {
+        $public_file = $this->getPublicPath($type, $size, $basename);
+        return url($public_file);
+    }
+
+    /**
+     * Retrive Resized Image from File Basename in base64 format
+     * @param string $type 
+     * @param string $size 
+     * @param string $basename 
+     * @return string
+     */
+    public function getBase64($type, $size, $basename)
+    {
+        return $this->getPublicPath($type, $size, $basename, true);
+    }
+
+    /**
+     * Retrive Resized Image Path/base64 from File Basename
+     * @param string $type 
+     * @param string $size 
+     * @param string $basename 
+     * @param boolean $base64
+     * @return string
+     */
+    public function getPublicPath($type, $size, $basename, $base64 = false)
+    {   
+        $config = $this->config;
+        $type_config = ImageResizerConfig::getTypeConfig($type);
+
+        $files = $this->getOutputPaths($type, $size, $basename);
+        extract($files);
+
+        // If Return type is base64 
+        if($base64) {
+            //$type = pathinfo($compiled_file, PATHINFO_EXTENSION);
+            
+            $type = (string) $this->interImage->make($compiled_file)->mime();
+            // encode('data-url');
+            $data = file_get_contents($compiled_file);
+            $base64 = 'data:' . $type . ';base64,' . base64_encode($data);
+            return $base64;
+        }
+
+        if(file_exists($compiled_file)){
+            return $public_file;
+        }
+        else if($config['dynamic_generate'] && $size != 'original' && file_exists($original_file)){
+            $url = "resource-generate-image?filename=".urlencode($basename)."&type=".urlencode($type)."&size=".urlencode($size);
+            return $url;
+        }
+        else if(isset($type_config['default'])){
+            return $config['types'][$type]['default'];
+        }
+        return $public_file;
+    }
+
+    public function getRealPath($type, $size, $basename)
+    {
+        $files = $this->getOutputPaths($type, $size, $basename);
+        extract($files);
+        return $compiled_file;
+    }
+
+    public function getOutputPaths($type, $size, $basename)
+    {
         $this->changeDir();
 
-        $type_config = $this->getTypeConfig($type);
-
         $config = $this->config;
+        $type_config = ImageResizerConfig::getTypeConfig($type);
+
         if(empty($basename)){
             if(isset($type_config['default'])) {
                 return \URL::to($type_config['default']);
@@ -512,10 +400,12 @@ class ImageResizer
         $original = $type_config['original'];
         $compiled_path = $type_config['compiled'];
 
+        $original_file = "$original/$basename";
+
         // Check if user wants the original Image
         if($size == 'original')
         {
-            $new_path = "$original/$basename";
+            $compiled_file = $public_file = $original_file;
         }
         else
         {
@@ -532,20 +422,19 @@ class ImageResizer
             // Match Proper Extension
             $extension = $s[3];
             if($extension == 'original') $extension = $file_extension;
-            $new_path = "{$compiled_path}/{$size}/{$filename}-{$width}x{$height}.{$extension}";
+
+            $compiled_file = "{$compiled_path}/{$size}/{$filename}-{$width}x{$height}.{$extension}";
+            
+            if(!empty($type_config['public'])) {
+                $public = $type_config['public'];
+                $public_file = "{$public}/{$size}/{$filename}-{$width}x{$height}.{$extension}";
+            }
+            else {
+                $public_file = $compiled_file;
+            }
         }
 
-        if(file_exists($new_path)){
-            return \URL::to($new_path);
-        }
-        else if(!file_exists("$original/$basename") && isset($type_config['default'])){
-            return \URL::to($config['types'][$type]['default']);
-        }
-        else if($config['dynamic_generate'] && $size != 'original'){
-            $url = "resource-generate-image?filename=".urlencode($basename)."&type=".urlencode($type)."&size=".urlencode($size);
-            return \URL::to($url);
-        }
-        return \URL::to($new_path);
+        return compact('compiled_file', 'public_file');
     }
 
     /**

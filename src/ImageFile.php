@@ -109,7 +109,27 @@ class ImageFile
             $path = $this->fullpath;
 
             if (file_exists($path) && is_file($path)) {
+
                 $this->size = getimagesize($path);
+
+                // We need to use exif data as getimagesize provides invalid width, height if image is rotated
+                $exif = exif_read_data($path);
+
+                if(!empty($exif['Orientation'])) {
+                    if($exif['Orientation'] === 8 || $exif['Orientation'] === 6) {
+                        // 8 = CW Rotate Image to get original
+                        // 6 = CCW Rotate Image to get original
+
+                        // Store width as height & height as width
+                        $height = $this->size[0];
+                        $width = $this->size[1];
+
+                        $this->size[0] = $width;
+                        $this->size[1] = $height;
+                        $this->size[3] = 'width="'.$width.'" height="'.$height.'"';
+                    }
+                }
+            
                 return $this->size;
             }
         }

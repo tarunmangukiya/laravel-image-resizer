@@ -59,7 +59,8 @@ class ResizeImages extends Job implements SelfHandling, ShouldQueue
         \Log::info('ImageResizer for queue: '.$this->imageFile->fullpath);
 
         // Initialize InterImage Instance first
-        $this->interImage = new InterImage;
+        $interConfig = config('image');
+        $this->interImage = new InterImage($interConfig);
 
         $sizes = $this->type_config['sizes'];
         $compiled_path = $this->type_config['compiled'];
@@ -109,6 +110,9 @@ class ResizeImages extends Job implements SelfHandling, ShouldQueue
     public function resizeImage($fullpath, $target, $size, $size_string = null)
     {
         $img = $this->interImage->make($fullpath);
+
+        // Reset Image Rotation before doing any activity
+        $img->orientate();
 
         // Check if height or width is set to auto then resize must be according to the aspect ratio
         if($size[0] == null || $size[1] == null){
