@@ -332,7 +332,15 @@ class ImageResizer
      */
     public function getBase64($type, $size, $basename)
     {
-        return $this->getPublicPath($type, $size, $basename, true);
+        $compiled_file = $this->getRealPath($type, $size, $basename);
+
+        //$type = pathinfo($compiled_file, PATHINFO_EXTENSION);
+        
+        $type = (string) $this->interImage->make($compiled_file)->mime();
+        // encode('data-url');
+        $data = file_get_contents($compiled_file);
+        $base64 = 'data:' . $type . ';base64,' . base64_encode($data);
+        return $base64;
     }
 
     /**
@@ -343,24 +351,13 @@ class ImageResizer
      * @param boolean $base64
      * @return string
      */
-    public function getPublicPath($type, $size, $basename, $base64 = false)
+    public function getPublicPath($type, $size, $basename)
     {   
         $config = $this->config;
         $type_config = ImageResizerConfig::getTypeConfig($type);
 
         $files = $this->getOutputPaths($type, $size, $basename);
         extract($files);
-
-        // If Return type is base64 
-        if($base64) {
-            //$type = pathinfo($compiled_file, PATHINFO_EXTENSION);
-            
-            $type = (string) $this->interImage->make($compiled_file)->mime();
-            // encode('data-url');
-            $data = file_get_contents($compiled_file);
-            $base64 = 'data:' . $type . ';base64,' . base64_encode($data);
-            return $base64;
-        }
 
         if(file_exists($compiled_file)){
             return $public_file;
@@ -389,21 +386,16 @@ class ImageResizer
         $config = $this->config;
         $type_config = ImageResizerConfig::getTypeConfig($type);
 
-        if(empty($basename)){
-            if(isset($type_config['default'])) {
-                return \URL::to($type_config['default']);
-            } else {
-                return '';
-            }
-        }
-
         $original = $type_config['original'];
         $compiled_path = $type_config['compiled'];
 
         $original_file = "$original/$basename";
 
         // Check if user wants the original Image
-        if($size == 'original')
+        if(empty($basename)) {
+            $compiled_file = $public_file = null;
+        }
+        elseif($size == 'original')
         {
             $compiled_file = $public_file = $original_file;
         }
