@@ -40,7 +40,7 @@ class ResizeImages extends Job implements SelfHandling, ShouldQueue
 	{
 		$this->imageFile = $imageFile;
 		$this->type_config = $type_config;
-		\Log::info('Job created ImageResizer');
+		// \Log::info('Job created ImageResizer');
 	}
 
 	/**
@@ -56,7 +56,7 @@ class ResizeImages extends Job implements SelfHandling, ShouldQueue
         
         chdir(public_path());
         
-        \Log::info('ImageResizer for queue: '.$this->imageFile->fullpath);
+        // \Log::info('ImageResizer for queue: '.$this->imageFile->fullpath);
 
         // Initialize InterImage Instance first
         $interConfig = config('image');
@@ -96,7 +96,16 @@ class ResizeImages extends Job implements SelfHandling, ShouldQueue
                 $this->resizeImage($this->imageFile->fullpath, $target, $size, $folder);
             }
         }
-        \Log::info('ImageResizer Resized: '.$target);
+
+        // \Log::info('ImageResizer Resized: '.$target);
+
+        // Free up memory
+        $interConfig = null;
+        $sizes = null;
+        $compiled_path = null;
+        $filename = null;
+        $is_animated = null;
+        $this->interImage = null;
     }
 
     /**
@@ -140,6 +149,8 @@ class ResizeImages extends Job implements SelfHandling, ShouldQueue
         // finally we save the image as a new file
         $img->save($target);
         $img->destroy();
+
+        $img = null;
     }
 
     /**
@@ -199,8 +210,8 @@ class ResizeImages extends Job implements SelfHandling, ShouldQueue
         \File::put($target, $gifBinary);
 
         // Release Memory
-        unset($gifFrameExtractor);
-        unset($gifCreator);
+        $gifFrameExtractor = null;
+        $gifCreator = null;
     }
 
 }

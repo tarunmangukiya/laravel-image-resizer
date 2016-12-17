@@ -33,6 +33,20 @@ class ImageResizer
     private $guzzleHttp;
 
     /**
+     * Base Url to serve all the resized files
+     *
+     * @var string
+     */
+    private $baseUrl;
+
+    /**
+     * If you are using base_url then this will be false, else true
+     *
+     * @var Boolean
+     */
+    private $fileExistCheck = true;
+
+    /**
      * Creates new instance of Image Resizer
      *
      * @param array $config
@@ -50,6 +64,16 @@ class ImageResizer
                             'Accept'     => 'image/png,image/gif,image/jpeg,image/pjpeg;q=0.9,text/html,application/xhtml+xml,application/xml;q=0.8,*.*;q=0.5'
                         ]
                     ]);
+
+        // Set base_url to retrive the files when get method called
+        if(empty($this->config['base_url']) || in_array(config('app.env'), $this->config['ignore_environments'])) {
+            $this->baseUrl = url('').'/';
+            $this->fileExistCheck = true;
+        }
+        else {
+            $this->baseUrl = $this->config['base_url'] . '/';
+            $this->fileExistCheck = false;
+        }
     }
 
     /**
@@ -320,7 +344,7 @@ class ImageResizer
     public function get($type, $size, $basename)
     {
         $public_file = $this->getPublicPath($type, $size, $basename);
-        return url($public_file);
+        return $this->baseUrl.$public_file;
     }
 
     /**
@@ -359,16 +383,21 @@ class ImageResizer
         $files = $this->getOutputPaths($type, $size, $basename);
         extract($files);
 
-        if(file_exists($compiled_file)){
-            return $public_file;
+        // If user has set to have custom base_url, in case of CDN or other public storage then we won't be able to check its existance, return $public_file only in those cases
+
+        if($this->fileExistCheck) {
+            if(file_exists($compiled_file)){
+                return $public_file;
+            }
+            else if($config['dynamic_generate'] && $size != 'original' && file_exists($original_file)){
+                $url = "resource-generate-image?filename=".urlencode($basename)."&type=".urlencode($type)."&size=".urlencode($size);
+                return $url;
+            }
+            else if(isset($type_config['default'])){
+                return $config['types'][$type]['default'];
+            }
         }
-        else if($config['dynamic_generate'] && $size != 'original' && file_exists($original_file)){
-            $url = "resource-generate-image?filename=".urlencode($basename)."&type=".urlencode($type)."&size=".urlencode($size);
-            return $url;
-        }
-        else if(isset($type_config['default'])){
-            return $config['types'][$type]['default'];
-        }
+
         return $public_file;
     }
 
@@ -443,12 +472,12 @@ class ImageResizer
             
             //Create Directory for Original Folders
             $path = $type['original'];
-            \File::makeDirectory($path, 0777, true, true);
+            \File::makeDirectory($path, 0755, true, true);
 
             //Create Directory for All Target Folders
             foreach ($sizes as $key => $size) {
                 $path = $type['compiled'].'/'.$key;
-                \File::makeDirectory($path, 0777, true, true);
+                \File::makeDirectory($path, 0755, true, true);
             }
         }
         return true;
