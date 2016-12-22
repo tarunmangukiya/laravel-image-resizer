@@ -348,6 +348,35 @@ class ImageResizer
     }
 
     /**
+     * Retrive Resized Image from File Basename ignoring base_url, provides the link to local file only
+     * @param string $type 
+     * @param string $size 
+     * @param string $basename 
+     * @return string
+     */
+    public function getLocal($type, $size, $basename)
+    {
+        $config = $this->config;
+        $type_config = ImageResizerConfig::getTypeConfig($type);
+
+        $files = $this->getOutputPaths($type, $size, $basename);
+        extract($files);
+
+        if(file_exists($compiled_file)){
+            return $public_file;
+        }
+        else if($config['dynamic_generate'] && $size != 'original' && file_exists($original_file)){
+            $url = "resource-generate-image?filename=".urlencode($basename)."&type=".urlencode($type)."&size=".urlencode($size);
+            return $url;
+        }
+        else if(isset($type_config['default'])){
+            return $config['types'][$type]['default'];
+        }
+
+        return url($public_file);
+    }
+
+    /**
      * Retrive Resized Image from File Basename in base64 format
      * @param string $type 
      * @param string $size 
