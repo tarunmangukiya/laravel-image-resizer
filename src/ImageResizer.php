@@ -363,17 +363,15 @@ class ImageResizer
         extract($files);
 
         if(file_exists($compiled_file)){
-            return $public_file;
+            return url($public_file);
         }
         else if($config['dynamic_generate'] && $size != 'original' && file_exists($original_file)){
             $url = "resource-generate-image?filename=".urlencode($basename)."&type=".urlencode($type)."&size=".urlencode($size);
-            return $url;
+            return url($url);
         }
         else if(isset($type_config['default'])){
-            return $config['types'][$type]['default'];
+            return url($config['types'][$type]['default']);
         }
-
-        return url($public_file);
     }
 
     /**
