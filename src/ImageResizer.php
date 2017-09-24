@@ -482,7 +482,7 @@ class ImageResizer
             }
         }
 
-        return compact('compiled_file', 'public_file');
+        return compact('compiled_file', 'public_file', 'original_file');
     }
 
     /**
