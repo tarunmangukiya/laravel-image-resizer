@@ -16,12 +16,13 @@ class ImageController extends Controller {
   */
   public function getGenerateImage()
   {
-    if(\Input::has('filename') && \Input::has('type') && \Input::has('size')) {
-      $basename = \Input::get('filename');
-      $type = \Input::get('type');
-      $size = \Input::get('size');
+    if(\Illuminate\Support\Facades\Input::has('filename') && \Illuminate\Support\Facades\Input::has('type') && \Illuminate\Support\Facades\Input::has('size')) {
+      $basename = \Illuminate\Support\Facades\Input::get('filename');
+      $type = \Illuminate\Support\Facades\Input::get('type');
+      $size = \Illuminate\Support\Facades\Input::get('size');
 
-      $type_config = \ImageResizer::getTypeSizeConfig($type, $size);
+      Facades\ImageResizer::info(); // forcing initialization, in particular loading the config
+      $type_config = ImageResizerConfig::getTypeSizeConfig($type, $size);
 
       $image_file = new ImageFile;
       $image_file = $image_file->setFileInfoFromPath($type_config['original'].'/'.$basename);
